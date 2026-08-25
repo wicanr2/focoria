@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { USDLoader } from 'three/addons/loaders/USDLoader.js';
 import './style.css';
 
 const viewport = document.querySelector('#viewport');
@@ -41,7 +42,7 @@ scene.add(grid);
 
 let model = null;
 let selected = null;
-let objectUrl = null;
+let objectUrls = [];
 let heldMove = null;
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -118,7 +119,7 @@ function acceptModel(root, format) {
   setStatus('載入完成', 100);
 }
 
-function loadSource(source, name = source) {
+function loadSource(source, name = source, manager = THREE.DefaultLoadingManager) {
   const format = extensionOf(name);
   setStatus('準備載入', 1);
   const onError = (error) => {
@@ -126,21 +127,45 @@ function loadSource(source, name = source) {
     setStatus(`載入失敗：${error.message ?? error}`, 0);
   };
   if (format === 'fbx') {
-    new FBXLoader().load(source, (root) => acceptModel(root, format), onProgress, onError);
+    new FBXLoader(manager).load(source, (root) => acceptModel(root, format), onProgress, onError);
   } else if (format === 'glb' || format === 'gltf') {
-    new GLTFLoader().load(source, (asset) => acceptModel(asset.scene, format), onProgress, onError);
+    new GLTFLoader(manager).load(source, (asset) => acceptModel(asset.scene, format), onProgress, onError);
+  } else if (['usd', 'usda', 'usdc', 'usdz'].includes(format)) {
+    new USDLoader(manager).load(source, (root) => acceptModel(root, format), onProgress, onError);
   } else {
     setStatus(`不支援 .${format || '未知'} 格式`, 0);
   }
 }
 
-function loadFile(file) {
-  if (objectUrl) URL.revokeObjectURL(objectUrl);
-  objectUrl = URL.createObjectURL(file);
-  loadSource(objectUrl, file.name);
+function loadFiles(filesLike) {
+  objectUrls.forEach((url) => URL.revokeObjectURL(url));
+  objectUrls = [];
+  const files = [...filesLike];
+  const modelExtensions = new Set(['fbx', 'glb', 'gltf', 'usd', 'usda', 'usdc', 'usdz']);
+  const mainFile = files.find((file) => modelExtensions.has(extensionOf(file.name)));
+  if (!mainFile) {
+    setStatus('沒有找到可載入的主模型', 0);
+    return;
+  }
+  const manager = new THREE.LoadingManager();
+  const resources = new Map();
+  for (const file of files) {
+    const url = URL.createObjectURL(file);
+    objectUrls.push(url);
+    resources.set(file.name, url);
+    if (file.webkitRelativePath) resources.set(file.webkitRelativePath, url);
+    if (file === mainFile) resources.set('__main__', url);
+  }
+  manager.setURLModifier((requested) => {
+    const clean = decodeURIComponent(requested.split(/[?#]/)[0]).replace(/^\.\//, '');
+    const basename = clean.slice(clean.lastIndexOf('/') + 1);
+    return resources.get(clean) ?? resources.get(basename) ?? requested;
+  });
+  setStatus(`已選取 ${files.length} 個檔案，正在載入 ${mainFile.name}`, 1);
+  loadSource(resources.get('__main__'), mainFile.name, manager);
 }
 
-fileInput.addEventListener('change', () => fileInput.files[0] && loadFile(fileInput.files[0]));
+fileInput.addEventListener('change', () => fileInput.files.length && loadFiles(fileInput.files));
 urlForm.addEventListener('submit', (event) => {
   event.preventDefault();
   if (urlInput.value.trim()) loadSource(urlInput.value.trim());
@@ -215,7 +240,7 @@ for (const eventName of ['dragleave', 'drop']) {
     viewport.classList.remove('dragging');
   });
 }
-viewport.addEventListener('drop', (event) => event.dataTransfer.files[0] && loadFile(event.dataTransfer.files[0]));
+viewport.addEventListener('drop', (event) => event.dataTransfer.files.length && loadFiles(event.dataTransfer.files));
 
 renderer.domElement.addEventListener('pointerdown', (event) => {
   if (!model) return;
@@ -251,7 +276,8 @@ if (defaultModel) {
   loadSource(defaultModel);
 }
 
-fetch('/models/manifest.json')
+const modelsBase = new URL('models/', document.baseURI);
+fetch(new URL('manifest.json', modelsBase))
   .then((response) => {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.json();
@@ -259,7 +285,7 @@ fetch('/models/manifest.json')
   .then((manifest) => {
     for (const item of manifest.models ?? []) {
       const option = document.createElement('option');
-      option.value = `/models/${item.file}`;
+      option.value = new URL(item.file, modelsBase).href;
       option.textContent = item.label ?? item.file;
       floorSelect.append(option);
     }

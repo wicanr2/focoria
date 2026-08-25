@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="可在瀏覽器開啟 FBX 與 GLB/glTF 的 Three.js 模型檢視器" />
-    <title>FBX / GLB 模型檢視器</title>
+    <meta name="description" content="可在瀏覽器開啟 FBX、GLB/glTF 與 USD 的 Three.js 模型檢視器" />
+    <title>FBX / GLB / USD 模型檢視器</title>
     <script type="module" src="/src/main.js"></script>
   </head>
   <body>
@@ -12,12 +12,13 @@
       <header class="toolbar">
         <div>
           <p class="eyebrow">THREE.JS MODEL INSPECTOR</p>
-          <h1>FBX / GLB 模型檢視器</h1>
+          <h1>FBX / GLB / USD 模型檢視器</h1>
         </div>
         <div class="actions">
           <label class="file-button">
-            開啟 FBX／GLB
-            <input id="file-input" type="file" accept=".fbx,.glb,.gltf" />
+            開啟三維模型
+            <input id="file-input" type="file" multiple
+              accept=".fbx,.glb,.gltf,.bin,.usd,.usda,.usdc,.usdz,.png,.jpg,.jpeg,.webp,.ktx2" />
           </label>
           <button id="reset-camera" type="button">重設視角</button>
         </div>
@@ -28,7 +29,7 @@
           <form id="url-form">
             <label for="model-url">模型網址</label>
             <div class="url-row">
-              <input id="model-url" name="model-url" placeholder="models/example.glb 或 model.fbx" />
+              <input id="model-url" name="model-url" placeholder="model.usda、example.glb 或 model.fbx" />
               <button type="submit">載入</button>
             </div>
           </form>
@@ -64,11 +65,11 @@
             </dl>
           </section>
 
-          <p class="notice">模型名稱與節點名稱只作來源追溯，不代表已確認的業務語意。</p>
+          <p class="notice">選取的模型只在瀏覽器內解析，不會上傳或儲存到伺服器。模型名稱與節點名稱只作來源追溯，不代表已確認的業務語意。</p>
         </aside>
 
         <div id="viewport" aria-label="三維場景檢視區">
-          <div class="drop-hint">拖放 FBX／GLB 到這裡</div>
+          <div class="drop-hint">拖放 FBX／GLB／USD 到這裡</div>
           <div class="camera-pad" aria-label="鏡頭平移控制">
             <button type="button" data-camera-move="up" aria-label="鏡頭向上移動">▲</button>
             <button type="button" data-camera-move="left" aria-label="鏡頭向左移動">◀</button>

@@ -1,7 +1,7 @@
-# FBX / GLB Viewer
+# FBX / GLB / USD Viewer
 
 以 Three.js 製作的瀏覽器三維模型檢視器，支援從網址、本機檔案選擇器或拖放載入
-FBX、GLB 與 glTF。介面提供軌道旋轉、方向平移、滾輪縮放、模型統計，以及點選
+FBX、GLB、glTF、USD、USDA、USDC 與 USDZ。介面提供軌道旋轉、方向平移、滾輪縮放、模型統計，以及點選
 表面的世界座標與來源節點名稱。
 
 > 本儲存庫未提供開放原始碼授權。公開存取不代表授予複製、修改、散布或商業使用
@@ -29,10 +29,18 @@ GLB 是 glTF 的單一二進位封裝，可以把場景描述、網格與可內�
 FBX 適合保存或檢查來源交換資料；GLB 適合瀏覽器展示。格式轉換可能改變材質、座標軸、
 單位、物件階層或動畫，所以轉換結果不應在未驗證時被當成來源檔的完全等價副本。
 
+### USD
+
+USD（Universal Scene Description）是 Pixar 發展的場景描述系統。`.usda` 是可讀文字格式，
+`.usdc` 是二進位格式，`.usd` 可為其中任一種，`.usdz` 則是單檔封裝。本專案使用
+Three.js `USDLoader` 載入這些格式。網頁可瀏覽被轉換成 Three.js 物件的外觀與階層，
+但不會執行 Isaac Sim 的 PhysX、OmniGraph、ROS 2 bridge 或 articulation 控制。
+
 ## 功能
 
-- 載入 `.fbx`、`.glb`、`.gltf` 網址。
-- 從本機選取或拖放 FBX／GLB。
+- 載入 `.fbx`、`.glb`、`.gltf`、`.usd`、`.usda`、`.usdc`、`.usdz` 網址。
+- 從本機選取或拖放 FBX／GLB／USD；模型只在瀏覽器記憶體內解析。
+- 一次選取主模型與同層相依資源，例如 `.gltf + .bin + 貼圖`。
 - 滑鼠左鍵旋轉、右鍵平移、滾輪縮放。
 - 畫面方向控制盤與鍵盤方向鍵平移鏡頭。
 - `Shift + 方向鍵` 加速移動。
@@ -69,18 +77,33 @@ npm run build
 
 沒有 `manifest.json` 時，網址載入、本機選取與拖放仍可正常使用。
 
+## GitHub Pages
+
+`.github/workflows/pages.yml` 會在 `main` 分支更新後建置並部署 `dist/`。儲存庫需在
+GitHub 的 **Settings → Pages → Build and deployment** 將 Source 設為 **GitHub Actions**。
+對應 wicanr2 帳號的預期網址是：
+
+```text
+https://wicanr2.github.io/fbx-glb-viewer/
+```
+
+公開網頁不內嵌任何模型。若用網址載入 USD 的外部 reference 或貼圖，來源伺服器必須
+保留相對目錄結構並允許跨來源資源共用（CORS）。
+
 ## 安全與資料邊界
 
-- 模型解析完全在使用者瀏覽器內進行，本專案不提供上傳伺服器。
+- 模型解析完全在使用者瀏覽器內進行；選檔不會將模型上傳、保存或加入 Git。
 - 載入遠端模型時，來源伺服器必須允許跨來源資源共用（CORS）。
 - 節點名稱只供追溯，不自動代表門、電梯、樓層或其他業務語意。
 - 公開部署前，應自行確認模型、貼圖與衍生資料的授權及機密邊界。
 
 ## English summary
 
-FBX / GLB Viewer is a browser-based Three.js model inspector for FBX, GLB, and glTF files.
+FBX / GLB / USD Viewer is a browser-based Three.js model inspector for FBX, GLB, glTF,
+USD, USDA, USDC, and USDZ files.
 It supports URL loading, local file selection, drag and drop, orbit controls, keyboard and
-on-screen camera panning, wheel zoom, scene statistics, and surface hit coordinates.
+on-screen camera panning, wheel zoom, scene statistics, and surface hit coordinates. Local files
+are parsed in browser memory and are not uploaded or persisted by the application.
 
 FBX is commonly used as a rich interchange format between digital content creation tools.
 glTF is an open runtime delivery format, while GLB packages glTF data and embedded resources

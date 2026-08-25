@@ -5,6 +5,10 @@ dist/
 *.glb
 *.gltf
 *.bin
+*.usd
+*.usda
+*.usdc
+*.usdz
 models/
 !public/models/
 !public/models/manifest.example.json
