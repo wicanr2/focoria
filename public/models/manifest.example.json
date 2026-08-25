@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "models": [
+    {
+      "label": "範例模型",
+      "file": "example.glb"
+    }
+  ]
+}

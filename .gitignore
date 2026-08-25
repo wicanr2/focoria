@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.vite/
+*.fbx
+*.glb
+*.gltf
+*.bin
+models/
+!public/models/
+!public/models/manifest.example.json
