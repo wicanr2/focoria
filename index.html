@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="可在瀏覽器開啟 FBX、GLB/glTF 與 USD 的 Three.js 模型檢視器" />
+    <title>FBX / GLB / USD 模型檢視器</title>
+    <script type="module" crossorigin src="./assets/index-OrRUWKqJ.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-Bxy1ddMX.css">
+  </head>
+  <body>
+    <main id="app">
+      <header class="toolbar">
+        <div>
+          <p class="eyebrow">THREE.JS MODEL INSPECTOR</p>
+          <h1>FBX / GLB / USD 模型檢視器</h1>
+        </div>
+        <div class="actions">
+          <label class="file-button">
+            開啟三維模型
+            <input id="file-input" type="file" multiple
+              accept=".fbx,.glb,.gltf,.bin,.usd,.usda,.usdc,.usdz,.png,.jpg,.jpeg,.webp,.ktx2" />
+          </label>
+          <button id="reset-camera" type="button">重設視角</button>
+        </div>
+      </header>
+
+      <section class="workspace">
+        <aside class="panel">
+          <form id="url-form">
+            <label for="model-url">模型網址</label>
+            <div class="url-row">
+              <input id="model-url" name="model-url" placeholder="model.usda、example.glb 或 model.fbx" />
+              <button type="submit">載入</button>
+            </div>
+          </form>
+
+          <div class="floor-picker">
+            <label for="floor-select">模型清單</label>
+            <select id="floor-select">
+              <option value="">選擇模型</option>
+            </select>
+          </div>
+
+          <div class="status-block">
+            <span>狀態</span>
+            <strong id="status">等待模型</strong>
+            <progress id="progress" max="100" value="0"></progress>
+          </div>
+
+          <section>
+            <h2>選取物件</h2>
+            <dl id="selection">
+              <div><dt>名稱</dt><dd>—</dd></div>
+              <div><dt>型別</dt><dd>—</dd></div>
+              <div><dt>點選座標</dt><dd>—</dd></div>
+            </dl>
+          </section>
+
+          <section>
+            <h2>場景資訊</h2>
+            <dl id="scene-info">
+              <div><dt>格式</dt><dd>—</dd></div>
+              <div><dt>物件</dt><dd>0</dd></div>
+              <div><dt>三角面</dt><dd>0</dd></div>
+            </dl>
+          </section>
+
+          <p class="notice">選取的模型只在瀏覽器內解析，不會上傳或儲存到伺服器。模型名稱與節點名稱只作來源追溯，不代表已確認的業務語意。</p>
+        </aside>
+
+        <div id="viewport" aria-label="三維場景檢視區">
+          <div class="drop-hint">拖放 FBX／GLB／USD 到這裡</div>
+          <div class="camera-pad" aria-label="鏡頭平移控制">
+            <button type="button" data-camera-move="up" aria-label="鏡頭向上移動">▲</button>
+            <button type="button" data-camera-move="left" aria-label="鏡頭向左移動">◀</button>
+            <button type="button" data-camera-move="down" aria-label="鏡頭向下移動">▼</button>
+            <button type="button" data-camera-move="right" aria-label="鏡頭向右移動">▶</button>
+          </div>
+          <div class="legend"><span></span> 點選模型可查看來源物件名稱</div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
