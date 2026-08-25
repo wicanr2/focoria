@@ -79,9 +79,9 @@ npm run build
 
 ## GitHub Pages
 
-`.github/workflows/pages.yml` 會在 `main` 分支更新後建置並部署 `dist/`。儲存庫需在
-GitHub 的 **Settings → Pages → Build and deployment** 將 Source 設為 **GitHub Actions**。
-對應 wicanr2 帳號的預期網址是：
+網站使用獨立 `gh-pages` 分支的根目錄發布，不使用 GitHub Actions。`main` 只保存
+原始碼；部署時先執行 `npm ci && npm run build`，再將 `dist/` 的內容推送到
+`gh-pages` 分支。對應 wicanr2 帳號的網站是：
 
 ```text
 https://wicanr2.github.io/fbx-glb-viewer/
