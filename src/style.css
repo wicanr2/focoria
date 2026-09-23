@@ -32,7 +32,17 @@ button, .file-button {
   background: #10262d;
 }
 .file-button { background: #176a68; border-color: #2aa19a; cursor: pointer; }
-.file-button input { display: none; }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 .workspace { display: grid; grid-template-columns: 310px 1fr; height: calc(100% - 84px); }
 .panel { padding: 20px; border-right: 1px solid #24414b; background: #0b181d; overflow: auto; }
@@ -49,6 +59,12 @@ input, select {
 }
 .floor-picker { padding-top: 14px; }
 .floor-picker select { width: 100%; }
+.usd-materials { display: grid; gap: 10px; }
+.usd-materials p { margin: 0; color: #9eb2b8; font-size: 11px; line-height: 1.55; }
+.usd-materials button { justify-self: start; }
+.usd-materials label { margin: 2px 0 -3px; }
+.usd-materials select { width: 100%; }
+.usd-materials .usd-material-summary { color: #c2a66e; }
 .status-block { display: grid; gap: 8px; }
 .status-block span { color: #81979e; font-size: 12px; }
 progress { width: 100%; accent-color: #58c8ba; }
@@ -58,7 +74,7 @@ dt { color: #789098; }
 dd { margin: 0; overflow-wrap: anywhere; }
 .notice { color: #c2a66e; font-size: 11px; line-height: 1.6; }
 
-#viewport { position: relative; min-width: 0; overflow: hidden; background: radial-gradient(circle at 50% 40%, #173039, #071014 68%); }
+#viewport { position: relative; min-width: 0; overflow: hidden; background: #ffffff; }
 #viewport canvas { display: block; width: 100%; height: 100%; }
 .drop-hint {
   position: absolute;
@@ -104,7 +120,7 @@ dd { margin: 0; overflow-wrap: anywhere; }
 .camera-pad [data-camera-move="left"] { grid-column: 1; grid-row: 2; }
 .camera-pad [data-camera-move="down"] { grid-column: 2; grid-row: 2; }
 .camera-pad [data-camera-move="right"] { grid-column: 3; grid-row: 2; }
-.legend { position: absolute; right: 16px; bottom: 14px; color: #91a8af; font-size: 11px; pointer-events: none; }
+.legend { position: absolute; right: 16px; bottom: 14px; color: #45616b; font-size: 11px; pointer-events: none; }
 .legend span { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #ffbb55; }
 
 @media (max-width: 760px) {

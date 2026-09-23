@@ -15,11 +15,9 @@
           <h1>FBX / GLB / USD 模型檢視器</h1>
         </div>
         <div class="actions">
-          <label class="file-button">
-            開啟三維模型
-            <input id="file-input" type="file" multiple
-              accept=".fbx,.glb,.gltf,.bin,.usd,.usda,.usdc,.usdz,.png,.jpg,.jpeg,.webp,.ktx2" />
-          </label>
+          <button id="open-file-button" class="file-button" type="button">開啟三維模型</button>
+          <input id="file-input" class="visually-hidden" type="file" multiple
+            accept=".fbx,.glb,.gltf,.bin,.usd,.usda,.usdc,.usdz,.png,.jpg,.jpeg,.webp,.ktx2" />
           <button id="reset-camera" type="button">重設視角</button>
         </div>
       </header>
@@ -40,6 +38,21 @@
               <option value="">選擇模型</option>
             </select>
           </div>
+
+          <section class="usd-materials">
+            <h2>沙崙 USD 素材覆蓋</h2>
+            <p>先開啟 GLB，再直接選一個 ASCII `.usda` 材質 stage。接著只加入它實際需要的貼圖資料夾，不必選取整個私有素材儲存庫；沒有 UV 座標的網格會使用 USD 色彩備援。</p>
+            <button id="open-usd-stage-button" type="button">直接選取 USD stage</button>
+            <input id="usd-stage-input" class="visually-hidden" type="file" accept=".usd,.usda" />
+            <button id="open-usd-texture-folder-button" type="button">加入貼圖資料夾</button>
+            <input id="usd-texture-folder-input" class="visually-hidden" type="file" webkitdirectory directory multiple accept=".png,.jpg,.jpeg,.webp" />
+            <label for="usd-stage-select">USD 材質 stage</label>
+            <select id="usd-stage-select" disabled>
+              <option value="">尚未選取素材資料夾</option>
+            </select>
+            <button id="apply-usd-material-button" type="button" disabled>套用 USD 材質</button>
+            <p id="usd-material-summary" class="usd-material-summary">素材僅在瀏覽器記憶體中讀取。</p>
+          </section>
 
           <div class="status-block">
             <span>狀態</span>

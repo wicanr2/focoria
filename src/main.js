@@ -2,13 +2,22 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { USDLoader } from 'three/addons/loaders/USDLoader.js';
+import { LocalUSDLoader } from './LocalUSDLoader.js';
+import { applyShalunUsdMaterialStage } from './shalunUsdMaterials.js';
 import './style.css';
 
 const viewport = document.querySelector('#viewport');
 const status = document.querySelector('#status');
 const progress = document.querySelector('#progress');
 const fileInput = document.querySelector('#file-input');
+const openFileButton = document.querySelector('#open-file-button');
+const usdStageInput = document.querySelector('#usd-stage-input');
+const openUsdStageButton = document.querySelector('#open-usd-stage-button');
+const usdTextureFolderInput = document.querySelector('#usd-texture-folder-input');
+const openUsdTextureFolderButton = document.querySelector('#open-usd-texture-folder-button');
+const usdStageSelect = document.querySelector('#usd-stage-select');
+const applyUsdMaterialButton = document.querySelector('#apply-usd-material-button');
+const usdMaterialSummary = document.querySelector('#usd-material-summary');
 const urlForm = document.querySelector('#url-form');
 const urlInput = document.querySelector('#model-url');
 const selection = document.querySelector('#selection');
@@ -16,8 +25,8 @@ const sceneInfo = document.querySelector('#scene-info');
 const floorSelect = document.querySelector('#floor-select');
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x071014);
-scene.fog = new THREE.FogExp2(0x071014, 0.00045);
+scene.background = new THREE.Color(0xffffff);
+scene.fog = new THREE.FogExp2(0xffffff, 0.00045);
 
 const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 100000);
 camera.up.set(0, 0, 1);
@@ -42,7 +51,12 @@ scene.add(grid);
 
 let model = null;
 let selected = null;
-let objectUrls = [];
+let modelObjectUrls = [];
+let materialObjectUrls = [];
+let usdMaterialFiles = [];
+let usdMaterialCatalog = null;
+let usdStageFiles = [];
+let usdTextureFiles = [];
 let heldMove = null;
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
@@ -116,7 +130,15 @@ function acceptModel(root, format) {
   scene.add(model);
   frameModel();
   updateInfo(format);
+  let embeddedMaps = 0;
+  model.traverse((node) => {
+    if (node.isMesh && (Array.isArray(node.material) ? node.material : [node.material]).some((material) => material?.map)) embeddedMaps++;
+  });
+  if (embeddedMaps && (format === 'glb' || format === 'gltf')) {
+    usdMaterialSummary.textContent = `模型已含 ${embeddedMaps.toLocaleString()} 個貼圖網格，可直接觀看，無需再套用 USD 材質。`;
+  }
   setStatus('載入完成', 100);
+  applyUsdMaterialButton.disabled = !usdStageSelect.value;
 }
 
 function loadSource(source, name = source, manager = THREE.DefaultLoadingManager) {
@@ -131,41 +153,193 @@ function loadSource(source, name = source, manager = THREE.DefaultLoadingManager
   } else if (format === 'glb' || format === 'gltf') {
     new GLTFLoader(manager).load(source, (asset) => acceptModel(asset.scene, format), onProgress, onError);
   } else if (['usd', 'usda', 'usdc', 'usdz'].includes(format)) {
-    new USDLoader(manager).load(source, (root) => acceptModel(root, format), onProgress, onError);
+    new LocalUSDLoader(manager).load(source, (root) => acceptModel(root, format), onProgress, onError);
   } else {
     setStatus(`不支援 .${format || '未知'} 格式`, 0);
   }
 }
 
+function normaliseLocalPath(path) {
+  const parts = [];
+  for (const part of path.replaceAll('\\', '/').split('/')) {
+    if (!part || part === '.') continue;
+    if (part === '..') {
+      parts.pop();
+    } else {
+      parts.push(part);
+    }
+  }
+  return parts.join('/');
+}
+
+function filePath(file) {
+  return normaliseLocalPath(file.webkitRelativePath || file.name);
+}
+
+function fileBasename(path) {
+  return path.slice(path.lastIndexOf('/') + 1);
+}
+
+function fileDirectory(path) {
+  const slash = path.lastIndexOf('/');
+  return slash < 0 ? '' : path.slice(0, slash);
+}
+
+function createLocalCatalog(files, urls) {
+  const byPath = new Map();
+  const byBasename = new Map();
+
+  for (const file of files) {
+    const path = filePath(file);
+    const url = URL.createObjectURL(file);
+    urls.push(url);
+    byPath.set(path, url);
+
+    const basename = fileBasename(path);
+    if (byBasename.has(basename)) {
+      byBasename.set(basename, null);
+    } else {
+      byBasename.set(basename, url);
+    }
+  }
+
+  return {
+    urlFor(file) {
+      return byPath.get(filePath(file));
+    },
+    resolve(requested, baseFile) {
+      const clean = decodeURIComponent(requested.split(/[?#]/)[0]);
+      const path = normaliseLocalPath(`${fileDirectory(filePath(baseFile))}/${clean}`);
+      return byPath.get(path) ?? byBasename.get(fileBasename(path)) ?? null;
+    },
+  };
+}
+
+function revokeUrls(urls) {
+  urls.forEach((url) => URL.revokeObjectURL(url));
+  urls.length = 0;
+}
+
 function loadFiles(filesLike) {
-  objectUrls.forEach((url) => URL.revokeObjectURL(url));
-  objectUrls = [];
+  revokeUrls(modelObjectUrls);
   const files = [...filesLike];
   const modelExtensions = new Set(['fbx', 'glb', 'gltf', 'usd', 'usda', 'usdc', 'usdz']);
-  const mainFile = files.find((file) => modelExtensions.has(extensionOf(file.name)));
+  const mainFile = files.find((file) => ['glb', 'gltf', 'fbx'].includes(extensionOf(file.name)))
+    ?? files.find((file) => modelExtensions.has(extensionOf(file.name)));
   if (!mainFile) {
     setStatus('沒有找到可載入的主模型', 0);
     return;
   }
   const manager = new THREE.LoadingManager();
-  const resources = new Map();
-  for (const file of files) {
-    const url = URL.createObjectURL(file);
-    objectUrls.push(url);
-    resources.set(file.name, url);
-    if (file.webkitRelativePath) resources.set(file.webkitRelativePath, url);
-    if (file === mainFile) resources.set('__main__', url);
-  }
+  const catalog = createLocalCatalog(files, modelObjectUrls);
   manager.setURLModifier((requested) => {
-    const clean = decodeURIComponent(requested.split(/[?#]/)[0]).replace(/^\.\//, '');
-    const basename = clean.slice(clean.lastIndexOf('/') + 1);
-    return resources.get(clean) ?? resources.get(basename) ?? requested;
+    return catalog.resolve(requested, mainFile) ?? requested;
   });
   setStatus(`已選取 ${files.length} 個檔案，正在載入 ${mainFile.name}`, 1);
-  loadSource(resources.get('__main__'), mainFile.name, manager);
+  loadSource(catalog.urlFor(mainFile), mainFile.name, manager);
 }
 
+openFileButton.addEventListener('click', () => {
+  fileInput.value = '';
+  fileInput.click();
+});
+
 fileInput.addEventListener('change', () => fileInput.files.length && loadFiles(fileInput.files));
+
+function updateUsdStageChoices(files) {
+  usdMaterialFiles = files
+    .filter((file) => ['usd', 'usda'].includes(extensionOf(file.name)))
+    .sort((left, right) => filePath(left).localeCompare(filePath(right), 'zh-Hant'));
+  usdStageSelect.replaceChildren();
+
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = usdMaterialFiles.length ? '選擇材質 stage' : '資料夾內沒有 .usda/.usd';
+  usdStageSelect.append(placeholder);
+
+  usdMaterialFiles.forEach((file, index) => {
+    const option = document.createElement('option');
+    option.value = String(index);
+    option.textContent = filePath(file);
+    usdStageSelect.append(option);
+  });
+
+  usdStageSelect.disabled = usdMaterialFiles.length === 0;
+  applyUsdMaterialButton.disabled = !model || !usdStageSelect.value;
+}
+
+function rebuildUsdMaterialCatalog() {
+  revokeUrls(materialObjectUrls);
+  const files = [...usdStageFiles, ...usdTextureFiles];
+  usdMaterialCatalog = createLocalCatalog(files, materialObjectUrls);
+  updateUsdStageChoices(files);
+  if (usdMaterialFiles.length === 1) usdStageSelect.value = '0';
+  applyUsdMaterialButton.disabled = !model || !usdStageSelect.value;
+  if (usdStageFiles.length) {
+    usdMaterialSummary.textContent = `已選取 1 個 USD stage，並加入 ${usdTextureFiles.length.toLocaleString('zh-TW')} 個貼圖檔。`;
+  } else {
+    usdMaterialSummary.textContent = `已加入 ${usdTextureFiles.length.toLocaleString('zh-TW')} 個貼圖檔；請直接選取 USD stage。`;
+  }
+}
+
+openUsdStageButton.addEventListener('click', () => {
+  usdStageInput.value = '';
+  usdStageInput.click();
+});
+
+usdStageInput.addEventListener('change', () => {
+  if (!usdStageInput.files.length) return;
+  usdStageFiles = [usdStageInput.files[0]];
+  usdTextureFiles = [];
+  rebuildUsdMaterialCatalog();
+});
+
+openUsdTextureFolderButton.addEventListener('click', () => {
+  usdTextureFolderInput.value = '';
+  usdTextureFolderInput.click();
+});
+
+usdTextureFolderInput.addEventListener('change', () => {
+  if (!usdTextureFolderInput.files.length) return;
+  usdTextureFiles = [...usdTextureFiles, ...usdTextureFolderInput.files];
+  rebuildUsdMaterialCatalog();
+});
+
+usdStageSelect.addEventListener('change', () => {
+  applyUsdMaterialButton.disabled = !model || !usdStageSelect.value;
+});
+
+applyUsdMaterialButton.addEventListener('click', async () => {
+  const stageFile = usdMaterialFiles[Number.parseInt(usdStageSelect.value, 10)];
+  if (!model || !stageFile || !usdMaterialCatalog) {
+    setStatus('請先開啟 GLB、選取素材資料夾與材質 stage', 0);
+    return;
+  }
+
+  try {
+    applyUsdMaterialButton.disabled = true;
+    setStatus(`正在套用 ${stageFile.name} 的 USD 材質`, 15);
+    const result = await applyShalunUsdMaterialStage({
+      root: model,
+      stageText: await stageFile.text(),
+      resolveFile: (requested) => usdMaterialCatalog.resolve(requested, stageFile),
+    });
+    const textureWarning = result.missingTextures.length
+      ? `；${result.missingTextures.length} 個貼圖未選取，已使用色彩備援`
+      : '';
+    const uvWarning = result.textureFallbackNodes
+      ? `；${result.textureFallbackNodes.toLocaleString('zh-TW')} 個網格沒有 UV，已使用 USD 色彩備援`
+      : '';
+    usdMaterialSummary.textContent = `已套用 ${result.applied.toLocaleString('zh-TW')} 個 GLB 節點、${result.materials} 種 USD 材質${textureWarning}${uvWarning}。`;
+    setStatus(result.applied ? 'USD 素材套用完成' : '未找到可對應的 GLB 節點', result.applied ? 100 : 0);
+  } catch (error) {
+    console.error(error);
+    usdMaterialSummary.textContent = `USD 素材套用失敗：${error.message ?? error}`;
+    setStatus(`USD 素材套用失敗：${error.message ?? error}`, 0);
+  } finally {
+    applyUsdMaterialButton.disabled = !model || !usdStageSelect.value;
+  }
+});
 urlForm.addEventListener('submit', (event) => {
   event.preventDefault();
   if (urlInput.value.trim()) loadSource(urlInput.value.trim());
@@ -283,7 +457,7 @@ fetch(new URL('manifest.json', modelsBase))
     return response.json();
   })
   .then((manifest) => {
-    for (const item of manifest.models ?? []) {
+    for (const item of manifest.models ?? manifest.floors ?? []) {
       const option = document.createElement('option');
       option.value = new URL(item.file, modelsBase).href;
       option.textContent = item.label ?? item.file;
