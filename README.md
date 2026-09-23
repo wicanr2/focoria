@@ -1,14 +1,13 @@
-# FBX / GLB / USD Viewer
+# Focoria
 
-以 Three.js 製作的瀏覽器三維模型檢視器，支援從網址、本機檔案選擇器或拖放載入
-FBX、GLB、glTF、自包含 ASCII USDA 與相容的 USDZ。另提供沙崙用的「GLB 幾何 + USD 材質覆蓋」：私有
-USD stage 與貼圖只由使用者在本機選取並於瀏覽器記憶體中處理。介面提供軌道旋轉、方向平移、滾輪縮放、模型統計，以及點選
-表面的世界座標與來源節點名稱。
+Focoria 是以 Three.js 製作的通用瀏覽器三維模型檢視器。使用者可以選取或拖放本機檔案；場景清單由本次選取的模型動態建立，不預設沙崙或其他場域。支援 FBX、GLB、glTF、自包含的 ASCII USD／USDA 與相容的 USDZ。模型與貼圖只在瀏覽器記憶體內處理，不上傳至伺服器。
 
 > 本儲存庫未提供開放原始碼授權。公開存取不代表授予複製、修改、散布或商業使用
 > 的權利；詳見 [COPYRIGHT.md](COPYRIGHT.md)。
 
-新版精簡介面已選定[UX 原圖與實作基準](docs/ux/README.md)；目前程式仍是舊介面，請勿把概念圖當成已上線畫面。
+精簡介面依[UX 原圖與補充規格](docs/ux/README.md)實作；場景與材質載入的驗收邊界見 [Issue #5 規格](docs/spec/issue-5-user-selected-scenes-and-materials.md)。
+
+`.blend` 直接載入尚未完成，另由 [Issue #2](https://github.com/wicanr2/focoria/issues/2) 追蹤；介面不會把它列為目前支援格式。
 
 ## 格式是什麼
 
@@ -48,20 +47,20 @@ USD（Universal Scene Description）是 Pixar 發展的場景描述系統。`.us
 
 ## 功能
 
-- 載入 `.fbx`、`.glb`、`.gltf`、自包含 ASCII `.usd/.usda` 與相容 `.usdz` 網址。
-- 從本機選取或拖放 FBX／GLB／USD；模型只在瀏覽器記憶體內解析。
-- 一次選取主模型與同層相依資源，例如 `.gltf + .bin + 貼圖`。
-- 對沙崙 GLB，直接選取一個 `.usda` stage，必要時再加入貼圖資料夾，在本機套用 USD 材質覆蓋。
+- 透過網址參數 `?model=<模型 URL>` 載入 `.fbx`、`.glb`、`.gltf`、自包含 ASCII `.usd/.usda` 與相容 `.usdz`；介面不另設網址輸入欄。
+- 從本機選取或拖放模型；多個模型會出現在「本次選取的場景」清單，再次選檔則取代舊批次。
+- 同批選取相依資源，例如 `.gltf + .bin + 貼圖`；缺少外部素材時顯示警告，不把純色備援說成貼圖已載入。
+- 保留單一 GLB／glTF 與可唯一對應的 USDA 材質舞台覆蓋能力；多模型時不猜測對應關係。
 - 滑鼠左鍵旋轉、右鍵平移、滾輪縮放。
-- 畫面方向控制盤與鍵盤方向鍵平移鏡頭。
+- 六軸小球旋鈕可拖曳旋轉，點選軸端切換視角；控制盤與鍵盤方向鍵可平移鏡頭。
+- `360° 展示` 依當前俯仰角和距離繞場景旋轉一圈，按鈕可中途停止。
 - `Shift + 方向鍵` 加速移動。
-- 點選模型，顯示實際命中表面的世界座標。
-- 顯示格式、物件數與三角面數。
-- 透過可選的模型清單載入部署端 GLB。
 
 ## 開發與建置
 
-需要 Node.js 22：
+本機工作區可執行 `../start-focoria.sh`，以 Docker 建置並預覽於 `http://127.0.0.1:5174/`；可用 `FOCORIA_PORT` 改埠號。舊入口 `../start-fbx-glb-viewer.sh` 轉呼叫同一個通用服務，不再預載沙崙模型。兩支腳本位於本機 `workplace/`，不屬於此儲存庫。
+
+需要 Node.js 22。依本機共用主機規則，下列專案命令須在受限 Docker 容器內執行：
 
 ```bash
 npm ci
@@ -71,52 +70,30 @@ npm run build
 
 正式輸出位於 `dist/`。此專案不附帶任何第三方或場域模型。
 
-## 可選模型清單
+## 使用者選檔與材質
 
-本機可設定 `LOCAL_SCENE_DIR` 指向集中場景目錄，Vite 開發及預覽伺服器就會唯讀提供 `/models/`，不必複製素材或建立符號連結。支援 manifest 的 `models` 及沙崙 `floors` 清單；此本機路由僅允許 manifest 與沙崙樓層 GLB 檔名。未設定時維持以下靜態部署方式。
+按「載入模型」可以一次選取一個或多個主模型，以及它們需要的 `.bin`、PNG、JPG 等相依檔；拖放也使用相同規則。清單只列可直接開啟的主模型，不列相依檔。選到新的一批主模型時，舊清單和素材一起被取代；若這次只有貼圖或不支援的格式，保留目前場景並顯示提示。
 
-若部署端需要下拉式模型清單，將
-`public/models/manifest.example.json` 複製成 `public/models/manifest.json`，再把模型放進
-同一個 `/models/` URL 路徑。模型檔已由 `.gitignore` 排除，避免誤提交大型或機密資產。
+載入器會顯示模型內的材質與貼圖。外部資源只有在同批選取、且能唯一對應時才會使用；瀏覽器無權自行掃描其他本機目錄。材質提示會區分已載入貼圖、只有純色材質、缺少外部素材與解析失敗。`.gltf` 引用的外部 `.bin` 與貼圖會先檢查是否在同批檔案中，避免缺件後仍誤報為完整載入。
 
-```json
-{
-  "schema_version": 1,
-  "models": [
-    { "label": "範例模型", "file": "example.glb" }
-  ]
-}
-```
-
-沒有 `manifest.json` 時，網址載入、本機選取與拖放仍可正常使用。
+網址參數 `?model=` 仍可直接載入有跨來源存取許可的模型，但不會預先塞進本機選檔清單。部署端的舊 `manifest.json` 清單與沙崙專用檔案路由已移除。
 
 ## 沙崙私有素材覆蓋
 
-新版沙崙 GLB 已內嵌 UV 與色彩貼圖，直接從樓層選單或本機選檔載入即可；介面會顯示已包含貼圖的網格數。下列覆蓋流程供舊 GLB 或另行比較材質使用，日常觀看新版 GLB 不需要再做一次。
+新版沙崙 GLB 已內嵌 UV 與色彩貼圖，直接以本機選檔載入即可，不需預設樓層清單。舊 GLB 或需比較 USDA 材質時，仍可使用同一個「載入模型」按鈕：
 
-1. 以「開啟三維模型」選取一個沙崙分層 GLB。
-2. 在側欄的「沙崙 USD 素材覆蓋」按「直接選取 USD stage」，選取相對應的 ASCII `.usda`。
-3. GLB 若有 UV 座標，再以「加入貼圖資料夾」選取 stage 實際引用的 JPG／PNG 所在資料夾；不必選取
-   整個私有素材工作樹。
-4. 按「套用 USD 材質」。沒有 UV 座標的網格會改用 USD stage 宣告的 fallback 色彩與材質參數，不會套用
-   需要 UV 的貼圖。更換材質會保留雙面設定；缺少法線的網格使用平面著色，避免無效法線造成黑面。
+1. 在檔案選擇器中同時選取一個 GLB／glTF、對應的 ASCII `.usda` 材質舞台，以及它引用的 JPG／PNG 貼圖檔。
+2. 檢視器辨識出材質覆蓋舞台且配對唯一時才自動套用；若缺貼圖、網格沒有 UV 或無對應節點，會顯示警告。多個幾何模型同批選取時不猜測哪個應套用該舞台。
+
+瀏覽器不會因選到一個 USDA 就自動取得磁碟上其他目錄的檔案；需要的外部貼圖必須在同次選檔中提供。大量素材庫不必整份選入檢視器，選取實際相依檔即可。
 
 驗證與修正歷程見 [WORKLOG.md](WORKLOG.md)。
 
-套用器以 USD `over` 的材質綁定，對應 GLB 匯出節點名稱中的 `__Geometry` 後綴；套用結果會顯示已匹配的節點數與未選取的貼圖數。這些素材不會複製到此公開程式碼儲存庫。
+套用器以 USD `over` 的材質綁定，對應 GLB 匯出節點名稱中的 `__Geometry` 後綴。這些素材不會複製到此公開程式碼儲存庫。
 
-## GitHub Pages
+## 發布狀態
 
-網站使用獨立 `gh-pages` 分支的根目錄發布，不使用 GitHub Actions。`main` 只保存
-原始碼；部署時先執行 `npm ci && npm run build`，再將 `dist/` 的內容推送到
-`gh-pages` 分支。對應 wicanr2 帳號的網站是：
-
-```text
-https://wicanr2.github.io/fbx-glb-viewer/
-```
-
-公開網頁不內嵌任何模型。外部 OpenUSD reference、payload 與 subLayer 組合不在本 viewer 的
-直接載入範圍；沙崙材質應透過本機選取私有素材工作樹處理。
+GitHub 儲存庫已更名為 [wicanr2/focoria](https://github.com/wicanr2/focoria)。本輪只重建並部署本機預覽，沒有發布 GitHub Pages；既有 `gh-pages` 設定與舊網站路徑不代表新版已公開上線。公開程式碼不內嵌場域模型。
 
 ## 安全與資料邊界
 
@@ -127,18 +104,18 @@ https://wicanr2.github.io/fbx-glb-viewer/
 
 ## English summary
 
-FBX / GLB / USD Viewer is a browser-based Three.js model inspector for FBX, GLB, glTF,
+Focoria is a browser-based Three.js model inspector for FBX, GLB, glTF,
 self-contained ASCII USDA, and compatible USDZ files. Binary USDC and composed OpenUSD stages
 are explicitly rejected instead of being reported as an empty successful scene.
-It supports URL loading, local file selection, drag and drop, orbit controls, keyboard and
-on-screen camera panning, wheel zoom, scene statistics, and surface hit coordinates. Local files
+Its scene list follows the current local file selection and replaces the previous batch. It supports URL loading, local file selection, drag and drop, orbit controls, a six-axis view gizmo,
+keyboard and on-screen camera panning, wheel zoom, and a horizontal 360-degree presentation orbit. Local files
 are parsed in browser memory and are not uploaded or persisted by the application.
 
 FBX is commonly used as a rich interchange format between digital content creation tools.
 glTF is an open runtime delivery format, while GLB packages glTF data and embedded resources
 into one binary file suitable for web delivery.
 
-For Shalun, local GLB geometry can receive an ASCII USDA material overlay selected from a private
-asset worktree; the viewer never uploads or bundles those assets. No models or site-specific datasets
+For Shalun, a single local GLB or glTF model can receive a uniquely paired ASCII USDA material overlay when the stage and its
+referenced textures are selected together; the viewer never uploads or bundles those assets. No models or site-specific datasets
 are included. This repository currently provides no open-source license. Public access does not grant
 permission to copy, modify, redistribute, or use the project commercially.

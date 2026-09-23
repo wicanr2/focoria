@@ -3,93 +3,72 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="可在瀏覽器開啟 FBX、GLB/glTF 與 USD 的 Three.js 模型檢視器" />
-    <title>FBX / GLB / USD 模型檢視器</title>
+    <meta name="description" content="Focoria：在瀏覽器檢視本機三維模型與材質" />
+    <title>Focoria｜三維模型檢視器</title>
     <script type="module" src="/src/main.js"></script>
   </head>
   <body>
     <main id="app">
       <header class="toolbar">
-        <div>
-          <p class="eyebrow">THREE.JS MODEL INSPECTOR</p>
-          <h1>FBX / GLB / USD 模型檢視器</h1>
-        </div>
-        <div class="actions">
-          <button id="open-file-button" class="file-button" type="button">開啟三維模型</button>
-          <input id="file-input" class="visually-hidden" type="file" multiple
-            accept=".fbx,.glb,.gltf,.bin,.usd,.usda,.usdc,.usdz,.png,.jpg,.jpeg,.webp,.ktx2" />
-          <button id="reset-camera" type="button">重設視角</button>
-        </div>
+        <h1>Focoria <span class="toolbar-subtitle">三維模型檢視器</span></h1>
+        <span id="opened-file-name" class="opened-file-name" hidden></span>
       </header>
 
       <section class="workspace">
         <aside class="panel">
-          <form id="url-form">
-            <label for="model-url">模型網址</label>
-            <div class="url-row">
-              <input id="model-url" name="model-url" placeholder="model.usda、example.glb 或 model.fbx" />
-              <button type="submit">載入</button>
-            </div>
-          </form>
+          <button id="open-file-button" class="file-button" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h6l2 2h10v11H3z" /></svg>
+            載入模型
+          </button>
+          <input id="file-input" class="visually-hidden" type="file" multiple
+            accept=".fbx,.glb,.gltf,.bin,.usd,.usda,.usdz,.png,.jpg,.jpeg,.webp,.ktx2" />
+          <div class="load-help">
+            <p>可開啟 GLB、glTF、FBX、自包含的 ASCII USD／USDA，以及相容的 USDZ。<code>.blend</code> 與二進位 USDC 尚未支援。</p>
+            <p>模型內的材質會自動載入。外部貼圖或 <code>.bin</code> 請與主模型同次選取；瀏覽器無法自動讀取未選取的本機檔案。</p>
+          </div>
 
-          <div class="floor-picker">
-            <label for="floor-select">模型清單</label>
-            <select id="floor-select">
-              <option value="">選擇模型</option>
+          <div class="scene-picker">
+            <label for="scene-select">本次選取的場景</label>
+            <select id="scene-select" disabled>
+              <option value="">尚未選取模型</option>
             </select>
           </div>
 
-          <section class="usd-materials">
-            <h2>沙崙 USD 素材覆蓋</h2>
-            <p>先開啟 GLB，再直接選一個 ASCII `.usda` 材質 stage。接著只加入它實際需要的貼圖資料夾，不必選取整個私有素材儲存庫；沒有 UV 座標的網格會使用 USD 色彩備援。</p>
-            <button id="open-usd-stage-button" type="button">直接選取 USD stage</button>
-            <input id="usd-stage-input" class="visually-hidden" type="file" accept=".usd,.usda" />
-            <button id="open-usd-texture-folder-button" type="button">加入貼圖資料夾</button>
-            <input id="usd-texture-folder-input" class="visually-hidden" type="file" webkitdirectory directory multiple accept=".png,.jpg,.jpeg,.webp" />
-            <label for="usd-stage-select">USD 材質 stage</label>
-            <select id="usd-stage-select" disabled>
-              <option value="">尚未選取素材資料夾</option>
-            </select>
-            <button id="apply-usd-material-button" type="button" disabled>套用 USD 材質</button>
-            <p id="usd-material-summary" class="usd-material-summary">素材僅在瀏覽器記憶體中讀取。</p>
-          </section>
-
-          <div class="status-block">
-            <span>狀態</span>
-            <strong id="status">等待模型</strong>
+          <p class="material-state"><span class="material-dot" aria-hidden="true"></span><span id="usd-material-summary">尚未載入模型</span></p>
+          <div id="load-feedback" class="load-feedback" hidden>
+            <strong id="status" role="status" aria-live="polite">等待模型</strong>
             <progress id="progress" max="100" value="0"></progress>
           </div>
-
-          <section>
-            <h2>選取物件</h2>
-            <dl id="selection">
-              <div><dt>名稱</dt><dd>—</dd></div>
-              <div><dt>型別</dt><dd>—</dd></div>
-              <div><dt>點選座標</dt><dd>—</dd></div>
-            </dl>
-          </section>
-
-          <section>
-            <h2>場景資訊</h2>
-            <dl id="scene-info">
-              <div><dt>格式</dt><dd>—</dd></div>
-              <div><dt>物件</dt><dd>0</dd></div>
-              <div><dt>三角面</dt><dd>0</dd></div>
-            </dl>
-          </section>
-
-          <p class="notice">選取的模型只在瀏覽器內解析，不會上傳或儲存到伺服器。模型名稱與節點名稱只作來源追溯，不代表已確認的業務語意。</p>
         </aside>
 
         <div id="viewport" aria-label="三維場景檢視區">
           <div class="drop-hint">拖放 FBX／GLB／USD 到這裡</div>
-          <div class="camera-pad" aria-label="鏡頭平移控制">
-            <button type="button" data-camera-move="up" aria-label="鏡頭向上移動">▲</button>
-            <button type="button" data-camera-move="left" aria-label="鏡頭向左移動">◀</button>
-            <button type="button" data-camera-move="down" aria-label="鏡頭向下移動">▼</button>
-            <button type="button" data-camera-move="right" aria-label="鏡頭向右移動">▶</button>
+          <div class="camera-tools" aria-label="視角控制">
+            <div id="orbit-gizmo" class="orbit-gizmo" aria-label="六軸視角旋鈕">
+              <div id="orbit-trackball" class="orbit-trackball" role="button" tabindex="0" aria-label="拖曳圓球旋轉視角" title="拖曳旋轉視角">
+                <span class="axis-spoke" data-spoke="x" aria-hidden="true"></span>
+                <span class="axis-spoke" data-spoke="y" aria-hidden="true"></span>
+                <span class="axis-spoke" data-spoke="z" aria-hidden="true"></span>
+                <span class="axis-spoke" data-spoke="-x" aria-hidden="true"></span>
+                <span class="axis-spoke" data-spoke="-y" aria-hidden="true"></span>
+                <span class="axis-spoke" data-spoke="-z" aria-hidden="true"></span>
+              </div>
+              <button class="axis-ball" type="button" data-axis="x" aria-label="切換至 X 正軸視角" title="X 正軸視角">X</button>
+              <button class="axis-ball" type="button" data-axis="y" aria-label="切換至 Y 正軸視角" title="Y 正軸視角">Y</button>
+              <button class="axis-ball" type="button" data-axis="z" aria-label="切換至 Z 正軸視角" title="Z 正軸視角">Z</button>
+              <button class="axis-ball" type="button" data-axis="-x" aria-label="切換至 X 負軸視角" title="X 負軸視角"></button>
+              <button class="axis-ball" type="button" data-axis="-y" aria-label="切換至 Y 負軸視角" title="Y 負軸視角"></button>
+              <button class="axis-ball" type="button" data-axis="-z" aria-label="切換至 Z 負軸視角" title="Z 負軸視角"></button>
+            </div>
+            <div class="camera-pad" aria-label="鏡頭平移控制">
+              <button type="button" data-camera-move="up" aria-label="鏡頭向上平移">▲</button>
+              <button type="button" data-camera-move="left" aria-label="鏡頭向左平移">◀</button>
+              <button type="button" data-camera-move="right" aria-label="鏡頭向右平移">▶</button>
+              <button type="button" data-camera-move="down" aria-label="鏡頭向下平移">▼</button>
+            </div>
+            <button id="reset-camera" class="camera-action" type="button">重設視角</button>
+            <button id="orbit-animation" class="camera-action presentation-action" type="button" aria-pressed="false">▶ 360° 展示</button>
           </div>
-          <div class="legend"><span></span> 點選模型可查看來源物件名稱</div>
         </div>
       </section>
     </main>

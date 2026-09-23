@@ -27,20 +27,20 @@ function isUSDC(buffer) {
  * ASCII USDA file when it is already a string, so it otherwise attempts to
  * unzip it as USDZ. Decode the ASCII variant before delegating to Three.js.
  *
- * This intentionally does not claim USDC composition support. Shalun's
- * material overlays are handled separately by shalunUsdMaterials.js.
+ * This intentionally does not claim USDC composition support. The optional
+ * legacy material overlay is handled separately by shalunUsdMaterials.js.
  */
 class LocalUSDLoader extends USDLoader {
   parse(buffer) {
     const usda = readUSDA(buffer);
     if (usda) {
       if (/\b(?:prepend\s+)?(?:references|payload|subLayers)\s*=/.test(usda)) {
-        throw new Error('含外部組合的 USD stage 請以 GLB 開啟後，從「沙崙 USD 素材覆蓋」套用 ASCII .usda 材質。');
+        throw new Error('目前不支援含 references、payload 或 subLayers 的 USD 組合舞台；請改用可直接檢視的模型檔。');
       }
       return super.parse(usda);
     }
     if (isUSDC(buffer)) {
-      throw new Error('目前不支援二進位 USDC；請改用對應 GLB，並套用 ASCII .usda 材質 stage。');
+      throw new Error('目前不支援二進位 USDC；請改用可直接檢視的模型檔。');
     }
     return super.parse(buffer);
   }
