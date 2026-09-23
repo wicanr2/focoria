@@ -1,5 +1,9 @@
 # 工作歷程
 
+## 2026-09-23
+
+- 使用者選定精簡版概念圖為新版 viewer UX 基準，原圖與補充規格集中於 [docs/ux/README.md](docs/ux/README.md)。Header 右側顯示已開啟檔名是原圖之外的已確認要求；本輪只記錄設計，尚未改造介面。
+
 ## 2026-09-21
 
 - 勘誤：僅停用無 UV 網格的貼圖不足以解決黑面。以 Docker 內 Chrome 載入完整沙崙 L1 GLB，再套用 L1-nomat USDA 重現問題。
